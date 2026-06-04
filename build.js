@@ -33,11 +33,13 @@ function main() {
   }
 
   let html = fs.readFileSync(HTML, 'utf8');
-  if (!html.includes(MARKER)) { console.error('marker not found in index.html'); process.exit(1); }
-  // Pretty-ish but compact JSON; safe to embed in a <script> (no </script> sequences expected in content)
+  // Idempotent: match the LESSONS assignment line whether it's the template marker
+  // (const LESSONS = {/*__LESSONS__*/};) or a previously-built single-line object.
+  const RE = /^const LESSONS = .*;\s*$/m;
+  if (!RE.test(html)) { console.error('LESSONS assignment line not found in index.html'); process.exit(1); }
   const json = JSON.stringify(lessons);
   if (json.includes('</script')) { console.error('content contains </script — would break the page'); process.exit(1); }
-  html = html.replace(MARKER, () => json); // function form: avoids $-substitution in replacement
+  html = html.replace(RE, () => 'const LESSONS = ' + json + ';'); // function form: avoids $-substitution
   fs.writeFileSync(HTML, html);
   console.log(`\nInjected ${total} lessons across ${ORDER.length} courses → index.html (${(html.length/1024).toFixed(0)} KB)`);
 }
